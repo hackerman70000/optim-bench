@@ -1,0 +1,4 @@
+name: cifar10_resnet20
+epochs: 100
+batch_size: 128
+num_workers: 2

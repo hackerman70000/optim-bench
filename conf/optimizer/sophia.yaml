@@ -1,0 +1,7 @@
+name: sophia
+lr: 1.0e-4
+weight_decay: 0.01
+extra:
+  rho: 0.04
+  betas: [0.965, 0.99]
+sweep_range: [1.0e-5, 3.0e-5, 1.0e-4, 3.0e-4, 1.0e-3]

@@ -1,0 +1,4 @@
+name: cifar100_vit_tiny
+epochs: 100
+batch_size: 128
+num_workers: 2
