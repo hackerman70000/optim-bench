@@ -69,6 +69,7 @@ class Trainer:
             **self.config.optimizer.extra,
         )
 
+        self._create_graph = self.config.optimizer.name == "sophia"
         scheduler = self._create_scheduler(optimizer, len(train_loader))
         self._save_config(run_dir)
 
@@ -151,8 +152,12 @@ class Trainer:
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
-            loss.backward()
+            loss.backward(create_graph=self._create_graph)
             optimizer.step()
+
+            if self._create_graph:
+                for p in model.parameters():
+                    p.grad = None
 
             if scheduler is not None:
                 scheduler.step()
