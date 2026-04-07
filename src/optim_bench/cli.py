@@ -207,6 +207,125 @@ def run_all(
     logger.info("All combinations complete.")
 
 
+@app.command()
+def run_pipeline(
+    seeds: Annotated[str, typer.Option(help="Comma-separated seeds")] = "42,137,256",
+    epochs: Annotated[Optional[int], typer.Option(help="Override number of epochs")] = None,
+    output_dir: Annotated[str, typer.Option(help="Output directory")] = "results",
+    device: Annotated[Optional[str], typer.Option(help="Device")] = None,
+    skip_sweeps: Annotated[bool, typer.Option(help="Skip LR sweeps")] = False,
+) -> None:
+    """Run the full experiment pipeline: sweeps -> default runs -> optimized runs -> plots."""
+    import json
+
+    _ensure_registries()
+    from optim_bench.config import build_experiment_config, load_optimizer_config
+    from optim_bench.registry import OPTIMIZER_REGISTRY, TASK_REGISTRY
+    from optim_bench.trainer import Trainer
+
+    seed_list = [int(s.strip()) for s in seeds.split(",")]
+    device_str = device or _detect_device()
+    tasks = TASK_REGISTRY.list_available()
+    optimizers = OPTIMIZER_REGISTRY.list_available()
+    modes = ["generalization", "optimization"]
+    variants = ["raw", "full"]
+
+    total_sweeps = len(tasks) * len(optimizers) * len(variants)
+    total_runs = len(tasks) * len(optimizers) * len(modes) * len(variants) * 2 * len(seed_list)
+    logger.info(
+        f"Full pipeline: {total_sweeps} sweeps + {total_runs} runs "
+        f"({len(tasks)} tasks x {len(optimizers)} optimizers x "
+        f"{len(modes)} modes x {len(variants)} variants x 2 HP x {len(seed_list)} seeds)"
+    )
+
+    # Phase 1: LR sweeps
+    if not skip_sweeps:
+        logger.info("=" * 60)
+        logger.info("PHASE 1: LR SWEEPS")
+        logger.info("=" * 60)
+        sweep_idx = 0
+        for task_name in tasks:
+            for opt_name in optimizers:
+                for variant in variants:
+                    sweep_idx += 1
+                    logger.info(f"[Sweep {sweep_idx}/{total_sweeps}] {task_name} + {opt_name} ({variant})")
+
+                    opt_cfg = load_optimizer_config(opt_name)
+                    if not opt_cfg.sweep_range:
+                        continue
+
+                    best_lr = opt_cfg.lr
+                    best_metric = float("-inf")
+
+                    for lr_val in opt_cfg.sweep_range:
+                        config = build_experiment_config(
+                            task=task_name, optimizer=opt_name,
+                            mode="generalization", variant=variant,
+                            hp_setting="default", seeds=[seed_list[0]],
+                            lr_override=lr_val, epochs_override=epochs,
+                            output_dir=f"{output_dir}/sweeps", device=device_str,
+                        )
+                        trainer = Trainer(config)
+                        metrics = trainer.run(seed_list[0])
+                        if not metrics:
+                            continue
+                        last = metrics[-1]
+                        metric_val = last.val_accuracy if last.val_accuracy is not None else -last.train_loss
+                        if metric_val > best_metric:
+                            best_metric = metric_val
+                            best_lr = lr_val
+
+                    result_dir = Path(output_dir) / "sweeps" / task_name / opt_name
+                    result_dir.mkdir(parents=True, exist_ok=True)
+                    with (result_dir / f"{variant}_best.json").open("w") as f:
+                        json.dump({"best_lr": best_lr, "best_metric": best_metric}, f, indent=2)
+                    logger.info(f"  Best LR: {best_lr:.2e} (metric={best_metric:.4f})")
+
+    # Phase 2: Full experiments (default + optimized)
+    for hp_setting in ["default", "optimized"]:
+        logger.info("=" * 60)
+        logger.info(f"PHASE 2: FULL EXPERIMENTS ({hp_setting.upper()})")
+        logger.info("=" * 60)
+        run_idx = 0
+        for task_name in tasks:
+            for opt_name in optimizers:
+                for mode in modes:
+                    for variant in variants:
+                        run_idx += 1
+                        logger.info(
+                            f"[Run {run_idx}] {task_name} + {opt_name} "
+                            f"({mode}, {variant}, {hp_setting})"
+                        )
+                        try:
+                            config = build_experiment_config(
+                                task=task_name, optimizer=opt_name,
+                                mode=mode, variant=variant,
+                                hp_setting=hp_setting, seeds=seed_list,
+                                epochs_override=epochs, output_dir=output_dir,
+                                device=device_str,
+                            )
+                        except FileNotFoundError as e:
+                            logger.warning(f"  Skipping: {e}")
+                            continue
+
+                        trainer = Trainer(config)
+                        for seed in seed_list:
+                            trainer.run(seed)
+
+    # Phase 3: Plots
+    logger.info("=" * 60)
+    logger.info("PHASE 3: GENERATING PLOTS")
+    logger.info("=" * 60)
+    from optim_bench.evaluation import generate_all_plots
+
+    generate_all_plots(
+        results_dir=Path(output_dir),
+        output_dir=Path("plots"),
+    )
+
+    logger.info("Pipeline complete!")
+
+
 @app.command(name="list")
 def list_components() -> None:
     _ensure_registries()
