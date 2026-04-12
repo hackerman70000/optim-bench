@@ -18,6 +18,7 @@ htmlcov/
 results/
 plots/
 data/
+research/
 
 .DS_Store
 Thumbs.db
