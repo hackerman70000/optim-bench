@@ -41,18 +41,18 @@ optim-bench compare
 
 ### Modes
 
-- **generalization** — train/test split, optimizes validation accuracy
-- **optimization** — full dataset, minimizes training loss
+- **generalization** - train/test split, optimizes validation accuracy
+- **optimization** - full dataset, minimizes training loss
 
 ### Variants
 
-- **raw** — no scheduler, no augmentation (isolates optimizer behavior)
-- **full** — cosine annealing + warmup + augmentation
+- **raw** - no scheduler, no augmentation (isolates optimizer behavior)
+- **full** - cosine annealing + warmup + augmentation
 
 ### HP settings
 
-- **default** — hyperparameters from original papers
-- **optimized** — best LR from sweep
+- **default** - hyperparameters from original papers
+- **optimized** - best LR from sweep
 
 ## Tests
 
