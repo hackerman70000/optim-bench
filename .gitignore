@@ -24,6 +24,12 @@ research/
 Thumbs.db
 
 *.log
+*.aux
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
 *.swp
 *.swo
 *~
