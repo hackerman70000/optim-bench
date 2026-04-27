@@ -70,6 +70,9 @@ class Trainer:
         )
 
         self._create_graph = self.config.optimizer.name == "sophia"
+        if self._create_graph:
+            torch.backends.cuda.enable_flash_sdp(False)
+            torch.backends.cuda.enable_mem_efficient_sdp(False)
         scheduler = self._create_scheduler(optimizer, len(train_loader))
         self._save_config(run_dir)
 
@@ -105,6 +108,10 @@ class Trainer:
                     )
         except KeyboardInterrupt:
             logger.warning(f"Interrupted at epoch {len(metrics)}. Partial results saved.")
+        finally:
+            if self._create_graph:
+                torch.backends.cuda.enable_flash_sdp(True)
+                torch.backends.cuda.enable_mem_efficient_sdp(True)
 
         return metrics
 
