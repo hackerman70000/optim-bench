@@ -34,8 +34,8 @@ class Trainer:
         self.config = config
         self.device = torch.device(config.device)
 
-    def run(self, seed: int) -> list[EpochMetrics]:
-        run_dir = self.config.run_dir(seed)
+    def run(self, seed: int, run_dir_override: Path | None = None) -> list[EpochMetrics]:
+        run_dir = run_dir_override or self.config.run_dir(seed)
 
         if self._is_run_complete(run_dir):
             logger.info(f"Skipping completed run: {run_dir}")
