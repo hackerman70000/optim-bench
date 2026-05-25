@@ -19,6 +19,7 @@ results/
 plots/
 data/
 research/
+docs/
 
 .DS_Store
 Thumbs.db

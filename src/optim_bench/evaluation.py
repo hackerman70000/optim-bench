@@ -7,10 +7,10 @@ import pandas as pd
 from loguru import logger
 
 OPTIMIZER_COLORS = {
-    "adamw": "#1f77b4",
-    "sgd": "#ff7f0e",
-    "lion": "#2ca02c",
-    "sophia": "#d62728",
+    "adamw": "#4878D0",
+    "sgd": "#D49A6A",
+    "lion": "#6ACC64",
+    "sophia": "#B26A6E",
 }
 
 
